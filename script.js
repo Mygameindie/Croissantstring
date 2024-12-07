@@ -35,7 +35,7 @@ function getZIndex(categoryName) {
     return zIndexMap[categoryName] || 0;
 }
 
-// Load each JSON file
+// Load a JSON file and return its data
 async function loadItemFile(file) {
     try {
         const response = await fetch(file);
@@ -45,6 +45,47 @@ async function loadItemFile(file) {
         console.error(`Failed to load ${file}:`, error);
         return [];
     }
+}
+
+// Toggle visibility of item images and enforce mutual exclusivity within the same category
+function toggleVisibility(itemId, categoryName) {
+    const selectedItem = document.getElementById(itemId);
+    const isVisible = selectedItem.style.visibility === 'visible';
+
+    // Hide all items in the same category
+    const categoryItems = document.querySelectorAll(`.${categoryName}`);
+    categoryItems.forEach(item => {
+        item.style.visibility = 'hidden';
+    });
+
+    // Toggle visibility of the clicked item
+    selectedItem.style.visibility = isVisible ? 'hidden' : 'visible';
+
+    // Ensure correct z-index
+    if (!isVisible) {
+        selectedItem.style.zIndex = getZIndex(categoryName);
+
+        // Manage visibility of conflicting categories
+        if (['dress1', 'dress2'].includes(categoryName)) {
+            hideSpecificCategories(['top', 'pants', 'skirt', 'sweatshirt', 'outerpants']);
+        } else if (categoryName === 'outerpants') {
+            hideSpecificCategories(['pants', 'skirt', 'dress']);
+        } else if (['pants', 'skirt'].includes(categoryName)) {
+            hideSpecificCategories(['outerpants', 'dress']);
+        }
+    }
+
+    console.log(`Toggled ${itemId} (${categoryName}) to ${selectedItem.style.visibility}`);
+}
+
+// Helper function to hide items for specific categories
+function hideSpecificCategories(categories) {
+    categories.forEach(category => {
+        const items = document.querySelectorAll(`.${category}`);
+        items.forEach(item => {
+            item.style.visibility = 'hidden';
+        });
+    });
 }
 
 // Load items in batches
@@ -57,7 +98,7 @@ async function loadItemsInBatches(batchSize = 5) {
 
         await Promise.all(batch.map(async file => {
             const data = await loadItemFile(file);
-            const categoryName = file.replace('.json', '');
+            const categoryName = file.replace('.json', '').toLowerCase();
             const categoryContainer = document.createElement('div');
             categoryContainer.classList.add('category');
 
@@ -79,9 +120,8 @@ async function loadItemsInBatches(batchSize = 5) {
                 baseContainer.appendChild(img);
 
                 const button = document.createElement('img');
-                const buttonFile = item.src.replace('.png', 'b.png');
-                button.src = buttonFile;
-                button.alt = item.alt + ' Button';
+                button.src = item.src.replace('.png', 'b.png');
+                button.alt = `${item.alt} Button`;
                 button.classList.add('item-button');
                 button.onclick = () => toggleVisibility(itemId, categoryName);
                 categoryContainer.appendChild(button);
@@ -94,41 +134,6 @@ async function loadItemsInBatches(batchSize = 5) {
     }
 }
 
-// Toggle visibility of item images and enforce mutual exclusivity
-function toggleVisibility(itemId, categoryName) {
-    const selectedItem = document.getElementById(itemId);
-    const isVisible = selectedItem.style.visibility === 'visible';
-
-    // Toggle visibility of the clicked item
-    selectedItem.style.visibility = isVisible ? 'hidden' : 'visible';
-
-    // If the item is becoming visible, hide conflicting categories
-    if (!isVisible) {
-        if (categoryName === 'dress1') {
-            hideSpecificCategories(['top1', 'pants1', 'skirt1', 'sweatshirt1']);
-        } else if (categoryName === 'dress2') {
-            hideSpecificCategories(['top2', 'pants2', 'skirt2', 'sweatshirt2', 'outerpants2']);
-        } else if (categoryName === 'outerpants2') {
-            hideSpecificCategories(['pants1', 'pants2', 'skirt1', 'skirt2', 'dress1', 'dress2']);
-        } else if (['pants1', 'pants2', 'skirt1', 'skirt2', 'dress1', 'dress2'].includes(categoryName)) {
-            hideSpecificCategories(['outerpants2']);
-        }
-    }
-
-    // Debug: Log the action
-    console.log(`Toggled ${itemId} (${categoryName}) to ${selectedItem.style.visibility}`);
-}
-
-// Helper function to hide items for specific categories
-function hideSpecificCategories(categories) {
-    categories.forEach(category => {
-        const items = document.querySelectorAll(`.${category}`);
-        items.forEach(item => {
-            item.style.visibility = 'hidden'; // Set visibility to hidden
-        });
-    });
-}
-
 // Adjust canvas layout dynamically
 function adjustCanvasLayout() {
     const baseContainer = document.querySelector('.base-container');
@@ -138,13 +143,13 @@ function adjustCanvasLayout() {
 
     if (screenWidth <= 600) {
         baseContainer.style.display = 'flex';
-        baseContainer.style.flexWrap = 'nowrap';
-        baseContainer.style.justifyContent = 'space-between';
+        baseContainer.style.flexWrap = 'wrap';
+        baseContainer.style.justifyContent = 'center';
     } else {
         baseContainer.style.display = 'block';
         baseContainer.style.width = '500px';
         baseContainer.style.height = '400px';
-        controlsContainer.style.marginTop = 'auto';
+        controlsContainer.style.marginTop = '20px';
     }
 }
 
